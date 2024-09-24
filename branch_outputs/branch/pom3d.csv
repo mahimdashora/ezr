@@ -1,0 +1,31 @@
+
+/workspaces/ezr/data/optimize/process/pom3d.csv
+asIs	: 0.503
+div	: 0.599
+rows	: 500
+xcols	: 9
+ycols	: 3
+
+dumb/dim=high_dim,20 : 0.02 secs
+dumb/dim=high_dim,30 : 0.03 secs
+dumb/dim=high_dim,40 : 0.04 secs
+dumb/dim=high_dim,50 : 0.05 secs
+smart/dim=high_dim,20 : 1.94 secs
+smart/dim=high_dim,30 : 3.24 secs
+smart/dim=high_dim,40 : 4.02 secs
+smart/dim=high_dim,50 : 3.69 secs
+#
+ 0,     smart/dim=high_dim,40,  0.13,  0.03,   -*-               |                   ,  0.11,  0.12,  0.13,  0.15,  0.19
+ 0,     smart/dim=high_dim,50,  0.13,  0.02,   -*-               |                   ,  0.11,  0.12,  0.13,  0.14,  0.17
+#
+ 1,      dumb/dim=high_dim,50,  0.14,  0.03,   -*--              |                   ,  0.11,  0.12,  0.14,  0.15,  0.20
+#
+ 2,     smart/dim=high_dim,30,  0.15,  0.03,  -- *               |                   ,  0.08,  0.13,  0.15,  0.16,  0.19
+ 2,     smart/dim=high_dim,20,  0.16,  0.03,    -*----           |                   ,  0.13,  0.15,  0.16,  0.18,  0.27
+#
+ 3,      dumb/dim=high_dim,30,  0.17,  0.05,    - *-             |                   ,  0.12,  0.15,  0.17,  0.20,  0.24
+ 3,      dumb/dim=high_dim,40,  0.19,  0.02,    --*-             |                   ,  0.13,  0.17,  0.19,  0.19,  0.22
+#
+ 4,      dumb/dim=high_dim,20,  0.20,  0.05,    -- *--           |                   ,  0.13,  0.19,  0.20,  0.24,  0.28
+#
+ 5,                  asIs,500,  0.50,  0.31,       ------       *|    -------        ,  0.21,  0.34,  0.50,  0.65,  0.81

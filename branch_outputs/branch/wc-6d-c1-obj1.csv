@@ -1,0 +1,27 @@
+
+/workspaces/ezr/data/optimize/config/wc-6d-c1-obj1.csv
+asIs	: 0.257
+div	: 0.517
+rows	: 2880
+xcols	: 6
+ycols	: 1
+
+dumb/dim=high_dim,20 : 0.01 secs
+dumb/dim=high_dim,30 : 0.02 secs
+dumb/dim=high_dim,40 : 0.03 secs
+dumb/dim=high_dim,50 : 0.03 secs
+smart/dim=high_dim,20 : 1.43 secs
+smart/dim=high_dim,30 : 2.43 secs
+smart/dim=high_dim,40 : 3.34 secs
+smart/dim=high_dim,50 : 3.27 secs
+#
+ 0,     smart/dim=high_dim,50,  0.00,  0.00, *----               |                   ,  0.00,  0.00,  0.00,  0.00,  0.06
+ 0,     smart/dim=high_dim,40,  0.00,  0.00, *---                |                   ,  0.00,  0.00,  0.00,  0.00,  0.04
+ 0,     smart/dim=high_dim,30,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      dumb/dim=high_dim,40,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      dumb/dim=high_dim,50,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,     smart/dim=high_dim,20,  0.00,  0.01, *------------       |                   ,  0.00,  0.00,  0.00,  0.01,  0.14
+ 0,      dumb/dim=high_dim,30,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.01
+ 0,      dumb/dim=high_dim,20,  0.01,  0.02, *                   |                   ,  0.00,  0.00,  0.01,  0.02,  0.02
+#
+ 1,                 asIs,2880,  0.06,  0.05, ----  *  -----      |                   ,  0.00,  0.04,  0.06,  0.09,  0.14

@@ -1,0 +1,27 @@
+
+/workspaces/ezr/data/optimize/config/SS-Q.csv
+asIs	: 0.568
+div	: 0.733
+rows	: 2736
+xcols	: 13
+ycols	: 3
+
+dumb/dim=high_dim,20 : 0.02 secs
+dumb/dim=high_dim,30 : 0.02 secs
+dumb/dim=high_dim,40 : 0.03 secs
+dumb/dim=high_dim,50 : 0.03 secs
+smart/dim=high_dim,20 : 2.02 secs
+smart/dim=high_dim,30 : 3.36 secs
+smart/dim=high_dim,40 : 3.96 secs
+smart/dim=high_dim,50 : 3.34 secs
+#
+ 0,     smart/dim=high_dim,50,  0.06,  0.05, * -----             |                   ,  0.05,  0.05,  0.06,  0.10,  0.20
+ 0,      dumb/dim=high_dim,50,  0.07,  0.01, *-                  |                   ,  0.05,  0.06,  0.07,  0.08,  0.10
+ 0,     smart/dim=high_dim,30,  0.07,  0.13,  *    ----          |                   ,  0.05,  0.06,  0.07,  0.19,  0.27
+ 0,      dumb/dim=high_dim,40,  0.07,  0.03,  *                  |                   ,  0.05,  0.06,  0.07,  0.09,  0.10
+ 0,     smart/dim=high_dim,20,  0.07,  0.12,  *    ---           |                   ,  0.06,  0.06,  0.07,  0.19,  0.25
+ 0,      dumb/dim=high_dim,30,  0.07,  0.02,  *----              |                   ,  0.06,  0.06,  0.07,  0.08,  0.18
+ 0,      dumb/dim=high_dim,20,  0.09,  0.04, -* ----             |                   ,  0.06,  0.08,  0.09,  0.12,  0.21
+ 0,     smart/dim=high_dim,40,  0.18,  0.15,      * ---          |                   ,  0.05,  0.06,  0.18,  0.20,  0.27
+#
+ 1,                 asIs,2736,  0.29,  0.11,  -------   * -------|-------            ,  0.08,  0.23,  0.29,  0.34,  0.65

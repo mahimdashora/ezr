@@ -1,0 +1,27 @@
+
+/workspaces/ezr/data/optimize/config/wc+rs-3d-c4-obj1.csv
+asIs	: 0.257
+div	: 0.443
+rows	: 196
+xcols	: 3
+ycols	: 1
+
+dumb/dim=low_dim,20 : 0.01 secs
+dumb/dim=low_dim,30 : 0.01 secs
+dumb/dim=low_dim,40 : 0.02 secs
+dumb/dim=low_dim,50 : 0.02 secs
+smart/dim=low_dim,20 : 0.82 secs
+smart/dim=low_dim,30 : 1.41 secs
+smart/dim=low_dim,40 : 2.01 secs
+smart/dim=low_dim,50 : 2.63 secs
+#
+ 0,      smart/dim=low_dim,20,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.02
+ 0,      smart/dim=low_dim,30,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      smart/dim=low_dim,40,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.01
+ 0,      smart/dim=low_dim,50,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,       dumb/dim=low_dim,40,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.01
+ 0,       dumb/dim=low_dim,50,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.01
+ 0,       dumb/dim=low_dim,30,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.01,  0.01
+ 0,       dumb/dim=low_dim,20,  0.00,  0.01, *-                  |                   ,  0.00,  0.00,  0.00,  0.01,  0.07
+#
+ 1,                  asIs,196,  0.26,  0.13, -------   * ------  |                   ,  0.01,  0.19,  0.26,  0.32,  0.46

@@ -1,0 +1,29 @@
+
+/workspaces/ezr/data/optimize/process/xomo_osp.csv
+asIs	: 0.375
+div	: 0.325
+rows	: 10000
+xcols	: 23
+ycols	: 4
+
+dumb/dim=high_dim,20 : 0.03 secs
+dumb/dim=high_dim,30 : 0.06 secs
+dumb/dim=high_dim,40 : 0.07 secs
+dumb/dim=high_dim,50 : 0.08 secs
+smart/dim=high_dim,20 : 3.98 secs
+smart/dim=high_dim,30 : 4.15 secs
+smart/dim=high_dim,40 : 2.53 secs
+smart/dim=high_dim,50 : 2.16 secs
+#
+ 0,     smart/dim=high_dim,40,  0.08,  0.03,  -*--               |                   ,  0.05,  0.07,  0.08,  0.10,  0.12
+ 0,     smart/dim=high_dim,50,  0.08,  0.03, - *-                |                   ,  0.03,  0.06,  0.08,  0.09,  0.12
+#
+ 1,     smart/dim=high_dim,30,  0.09,  0.03,   -*----            |                   ,  0.08,  0.09,  0.09,  0.12,  0.18
+ 1,      dumb/dim=high_dim,50,  0.11,  0.03,   - *-              |                   ,  0.07,  0.09,  0.11,  0.13,  0.15
+ 1,     smart/dim=high_dim,20,  0.11,  0.09,  -- *  -----        |                   ,  0.05,  0.09,  0.11,  0.18,  0.26
+#
+ 2,      dumb/dim=high_dim,30,  0.12,  0.07,    - *  --          |                   ,  0.09,  0.12,  0.12,  0.18,  0.23
+ 2,      dumb/dim=high_dim,40,  0.16,  0.05,   --- *---          |                   ,  0.08,  0.12,  0.16,  0.18,  0.24
+ 2,      dumb/dim=high_dim,20,  0.17,  0.07,     -  *--          |                   ,  0.12,  0.12,  0.17,  0.19,  0.22
+#
+ 3,                asIs,10000,  0.39,  0.16,           ----    * |  ----             ,  0.22,  0.32,  0.39,  0.48,  0.56

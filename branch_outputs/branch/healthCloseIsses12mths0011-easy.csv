@@ -1,0 +1,27 @@
+
+/workspaces/ezr/data/optimize/hpo/healthCloseIsses12mths0011-easy.csv
+asIs	: 1.000
+div	: 1.000
+rows	: 10000
+xcols	: 5
+ycols	: 3
+
+dumb/dim=low_dim,20 : 0.02 secs
+dumb/dim=low_dim,30 : 0.02 secs
+dumb/dim=low_dim,40 : 0.02 secs
+dumb/dim=low_dim,50 : 0.03 secs
+smart/dim=low_dim,20 : 1.57 secs
+smart/dim=low_dim,30 : 2.55 secs
+smart/dim=low_dim,40 : 3.12 secs
+smart/dim=low_dim,50 : 3.09 secs
+#
+ 0,       dumb/dim=low_dim,20,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,       dumb/dim=low_dim,30,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,       dumb/dim=low_dim,40,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,       dumb/dim=low_dim,50,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      smart/dim=low_dim,20,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      smart/dim=low_dim,30,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      smart/dim=low_dim,40,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      smart/dim=low_dim,50,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+#
+ 1,                asIs,10000,  1.00,  0.00, --------------------|------------------*,  0.00,  1.00,  1.00,  1.00,  1.00

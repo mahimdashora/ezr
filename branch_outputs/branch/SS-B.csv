@@ -1,0 +1,29 @@
+
+/workspaces/ezr/data/optimize/config/SS-B.csv
+asIs	: 0.602
+div	: 0.551
+rows	: 206
+xcols	: 3
+ycols	: 2
+
+dumb/dim=low_dim,20 : 0.01 secs
+dumb/dim=low_dim,30 : 0.01 secs
+dumb/dim=low_dim,40 : 0.02 secs
+dumb/dim=low_dim,50 : 0.02 secs
+smart/dim=low_dim,20 : 0.86 secs
+smart/dim=low_dim,30 : 1.47 secs
+smart/dim=low_dim,40 : 2.11 secs
+smart/dim=low_dim,50 : 2.83 secs
+#
+ 0,      smart/dim=low_dim,20,  0.00,  0.08, *  --------         |                   ,  0.00,  0.00,  0.00,  0.09,  0.28
+ 0,      smart/dim=low_dim,30,  0.00,  0.00, *--                 |                   ,  0.00,  0.00,  0.00,  0.00,  0.10
+ 0,      smart/dim=low_dim,40,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+ 0,      smart/dim=low_dim,50,  0.00,  0.00, *                   |                   ,  0.00,  0.00,  0.00,  0.00,  0.00
+#
+ 1,       dumb/dim=low_dim,40,  0.16,  0.08, ---   *---          |                   ,  0.00,  0.09,  0.16,  0.17,  0.27
+ 1,       dumb/dim=low_dim,50,  0.16,  0.08, ---   *---          |                   ,  0.00,  0.09,  0.16,  0.17,  0.25
+ 1,       dumb/dim=low_dim,20,  0.17,  0.12, ------*    --       |                   ,  0.00,  0.16,  0.17,  0.28,  0.33
+#
+ 2,       dumb/dim=low_dim,30,  0.21,  0.08,    ---  *---        |                   ,  0.09,  0.16,  0.21,  0.25,  0.30
+#
+ 3,                  asIs,206,  0.60,  0.24,              ------ |   *    ------     ,  0.33,  0.49,  0.60,  0.73,  0.88
