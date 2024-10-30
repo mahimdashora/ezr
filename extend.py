@@ -1,21 +1,37 @@
-# on my machine, i ran this with:  
-#   python3.13 -B extend.py ../moot/optimize/[comp]*/*.csv
+import sys
+from ezr import *
 
-import sys,random
-from ezr import the, DATA, csv, dot
+def fetchdoneandtodo(train_file):
+    d = DATA().adds(csv(train_file))
+    done = d.activeLearning()
+    print(f"Number of done rows: {len(done)}")
+    compare_predictions_with_clustering(d, done, d.cols.y)
 
-def show(lst):
-  return print(*[f"{word:6}" for word in lst], sep="\t")
+def compare_predictions_with_clustering(d, done_rows, goals):
+    somes = []
+    mid1s = stats.SOME(txt="mid-leaf")
+    somes.append(mid1s)
 
-def myfun(train):
-  d    = DATA().adds(csv(train))
-  x    = len(d.cols.x)
-  size = len(d.rows)
-  dim  = "small" if x <= 5 else ("med" if x < 12 else "hi")
-  size = "small" if size< 500 else ("med" if size<5000 else "hi")
-  return [dim, size, x,len(d.cols.y), len(d.rows), train[17:]]
+    for row in d.rows:
+        # Cluster based on the done set
+        clusters = d.cluster(done_rows)
+        for k in [1, 2, 3, 4, 5]:  # Different k-values for clustering
+            ks = stats.SOME(txt=f"k{k}")
+            somes.append(ks)
+            
+            leaf = clusters.leaf(d, row)
+            cluster_rows = leaf.data.rows
+            predictions = d.predict(row, cluster_rows, k=k)
 
-random.seed(the.seed) #  not needed here, but good practice to always take care of seeds
-show(["dim", "size","xcols","ycols","rows","file"])
-show(["------"] * 6)
-[show(myfun(arg)) for arg in sys.argv if arg[-4:] == ".csv"]
+            # Update stats for comparison
+            mid1 = leaf.data.mid()
+            for at, pred in predictions.items():
+                actual_val = row[at]
+                sd = d.cols.all[at].div()
+                mid1s.add((actual_val - mid1[at]) / sd)
+                ks.add((actual_val - pred) / sd)
+
+    stats.report(somes)
+
+if __name__ == "__main__":
+    fetchdoneandtodo(sys.argv[1])
