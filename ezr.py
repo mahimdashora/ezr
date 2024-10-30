@@ -109,38 +109,38 @@ class SYM(COL):
   mode : atom=None
   most : int=0
 
-  n: int = 0          # Total count of symbols
-  entropy: float = 0  # Entropy of the distribution
+#   n: int = 0          # Total count of symbols
+#   entropy: float = 0  # Entropy of the distribution
 
 
-  def add(self, symbol):
-    """Add a symbol and update mode and entropy."""
-    if symbol in self.has:
-      self.has[symbol] += 1
-    else:
-      self.has[symbol] = 1
+#   def add(self, symbol):
+#     """Add a symbol and update mode and entropy."""
+#     if symbol in self.has:
+#       self.has[symbol] += 1
+#     else:
+#       self.has[symbol] = 1
 
-    self.n += 1  # Increment total number of symbols
+#     self.n += 1  # Increment total number of symbols
 
-    # Update mode if the new symbol's count is higher than the current mode
-    if self.has[symbol] > self.most:
-      self.most = self.has[symbol]
-      self.mode = symbol
+#     # Update mode if the new symbol's count is higher than the current mode
+#     if self.has[symbol] > self.most:
+#       self.most = self.has[symbol]
+#       self.mode = symbol
 
-    # Recalculate entropy whenever a new symbol is added
-    self._calculate_entropy()
+#     # Recalculate entropy whenever a new symbol is added
+#     self._calculate_entropy()
 
-  def _calculate_entropy(self):
-    """Calculate entropy based on the frequency of each symbol."""
-    self.entropy = 0  # Reset entropy
-    for count in self.has.values():
-      p = count / self.n  # Probability of each symbol
-      if p > 0:
-        self.entropy -= p * math.log2(p)  # Standard entropy formula
+#   def _calculate_entropy(self):
+#     """Calculate entropy based on the frequency of each symbol."""
+#     self.entropy = 0  # Reset entropy
+#     for count in self.has.values():
+#       p = count / self.n  # Probability of each symbol
+#       if p > 0:
+#         self.entropy -= p * math.log2(p)  # Standard entropy formula
 
-  def get_entropy(self):
-    """Return the calculated entropy."""
-    return self.entropy
+#   def get_entropy(self):
+#     """Return the calculated entropy."""
+#     return self.entropy
 
   def clone(self:SYM): return SYM(at=self.at,txt=self.txt)
 
@@ -196,79 +196,79 @@ class DATA:
   rows : rows = LIST() # rows
 
 
-  # Method to retrieve the model parameters from summary statistics
-  def get_model_params(self):
-    model_params = []
-    for col in self.cols.x:  # Assuming 'x' holds relevant columns for features
-      if isinstance(col, NUM):
-      # For numerical columns, use mean and standard deviation
-        model_params.append((col.mu, col.sd))
-      elif isinstance(col, SYM):
-        # For symbolic columns, use mode and entropy
-        model_params.append((col.mode, col.entropy))
-    return np.array(model_params)
+#   # Method to retrieve the model parameters from summary statistics
+#   def get_model_params(self):
+#     model_params = []
+#     for col in self.cols.x:  # Assuming 'x' holds relevant columns for features
+#       if isinstance(col, NUM):
+#       # For numerical columns, use mean and standard deviation
+#         model_params.append((col.mu, col.sd))
+#       elif isinstance(col, SYM):
+#         # For symbolic columns, use mode and entropy
+#         model_params.append((col.mode, col.entropy))
+#     return np.array(model_params)
 
-  # Method to apply noise to model parameters
-  def perturb_model(self, model_params, noise_strength):
-    perturbed_params = model_params + np.random.normal(0, noise_strength, size=model_params.shape)
-    return perturbed_params
+#   # Method to apply noise to model parameters
+#   def perturb_model(self, model_params, noise_strength):
+#     perturbed_params = model_params + np.random.normal(0, noise_strength, size=model_params.shape)
+#     return perturbed_params
 
-  # Method to measure noise stability
-  def measure_noise_stability(self, row, noise_strength):
-    original_output = self.model_output(row)
-    perturbed_params = self.perturb_model(self.get_model_params(), noise_strength)
-    perturbed_output = self.model_output(row, perturbed_params)
-    return abs(original_output - perturbed_output)
+#   # Method to measure noise stability
+#   def measure_noise_stability(self, row, noise_strength):
+#     original_output = self.model_output(row)
+#     perturbed_params = self.perturb_model(self.get_model_params(), noise_strength)
+#     perturbed_output = self.model_output(row, perturbed_params)
+#     return abs(original_output - perturbed_output)
 
-  # Define model output based on column summaries (NUM/SYM)
-  def model_output(self, row, model_params=None):
-    if model_params is None:
-        model_params = self.get_model_params()
+#   # Define model output based on column summaries (NUM/SYM)
+#   def model_output(self, row, model_params=None):
+#     if model_params is None:
+#         model_params = self.get_model_params()
 
-    output = 0
-    for i, col in enumerate(self.cols.x):  # Assuming 'x' holds feature columns
-        if isinstance(col, NUM):
-            mu, sd = model_params[i]
-            output += (row[i] - mu) / (sd + 1e-5)  # Normalized output using row[i]
-        elif isinstance(col, SYM):
-            mode, entropy = model_params[i]
-            output += 1 if row[i] == mode else 0  # Binary output based on mode match
-    return output
+#     output = 0
+#     for i, col in enumerate(self.cols.x):  # Assuming 'x' holds feature columns
+#         if isinstance(col, NUM):
+#             mu, sd = model_params[i]
+#             output += (row[i] - mu) / (sd + 1e-5)  # Normalized output using row[i]
+#         elif isinstance(col, SYM):
+#             mode, entropy = model_params[i]
+#             output += 1 if row[i] == mode else 0  # Binary output based on mode match
+#     return output
 
-  def calculate_accuracy(self, done):
-    """
-    Calculate accuracy by comparing predicted labels with actual labels.
-    """
-    correct_predictions = 0
-    total_predictions = len(done)
+#   def calculate_accuracy(self, done):
+#     """
+#     Calculate accuracy by comparing predicted labels with actual labels.
+#     """
+#     correct_predictions = 0
+#     total_predictions = len(done)
 
-    for row in done:
-      #actual_label = row[-1]  # Assuming the label is the last column
-      actual_label = [row[col.at] for col in self.cols.y]
-      predicted_label = self.predict_label(row)
+#     for row in done:
+#       #actual_label = row[-1]  # Assuming the label is the last column
+#       actual_label = [row[col.at] for col in self.cols.y]
+#       predicted_label = self.predict_label(row)
 
-      if predicted_label == actual_label:
-        correct_predictions += 1
+#       if predicted_label == actual_label:
+#         correct_predictions += 1
 
-    accuracy = (correct_predictions / total_predictions) * 100 if total_predictions > 0 else 0
-    return accuracy
+#     accuracy = (correct_predictions / total_predictions) * 100 if total_predictions > 0 else 0
+#     return accuracy
 
 
-  def predict_label(self, row):
-    """
-    Predict the label for a given row based on the model's current state.
-    """
+#   def predict_label(self, row):
+#     """
+#     Predict the label for a given row based on the model's current state.
+#     """
 
-    print("Rows Sample:", self.rows[:5])
-    best = self.clone(self.rows[:int(len(self.rows) ** 0.5)])  # Use top sqrt(N) for "best"
-    rest = self.clone(self.rows[int(len(self.rows) ** 0.5):])  # Use the rest for comparison
+#     print("Rows Sample:", self.rows[:5])
+#     best = self.clone(self.rows[:int(len(self.rows) ** 0.5)])  # Use top sqrt(N) for "best"
+#     rest = self.clone(self.rows[int(len(self.rows) ** 0.5):])  # Use the rest for comparison
         
-    # Compute log likelihood for "best" and "rest"
-    best_log_likelihood = best.loglike(row, len(self.rows), 2, noise_strength)
-    rest_log_likelihood = rest.loglike(row, len(self.rows), 2, noise_strength)
+#     # Compute log likelihood for "best" and "rest"
+#     best_log_likelihood = best.loglike(row, len(self.rows), 2, noise_strength)
+#     rest_log_likelihood = rest.loglike(row, len(self.rows), 2, noise_strength)
 
-    # Binary classification: return 1 if best likelihood is higher, otherwise 0
-    return 1 if best_log_likelihood > rest_log_likelihood else 0
+#     # Binary classification: return 1 if best likelihood is higher, otherwise 0
+#     return 1 if best_log_likelihood > rest_log_likelihood else 0
 
   # Another way to create a DATA is to copy the columns structure of
   # an existing DATA, then maybe load in some rows to that new DATA.
