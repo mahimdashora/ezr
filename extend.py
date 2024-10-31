@@ -1,99 +1,118 @@
 import sys
 from ezr import *
+import numpy as np
+import math as m
+import random as rand
+from collections import Counter
 
-def fetchdoneandtodo(train_file):
+def add_noise_to_data(data, noise_strength):
+    # Loop through each row and cell in the data
+    #print("hello")
+    for r in data.rows:
+        for c in data.cols.x:
+            if r[c.at] != "?":
+                if c.txt[0].isupper() and c.txt[-1]!="X": # checks if NUM
+                    #print(f"  c's {c.txt[0]} {c.txt[-1]}")
+                    # Add Gaussian noise to each cell
+                    if isinstance(r[c.at], (float)): # its a float
+                        r[c.at] += np.random.normal(0, noise_strength)
+                    else: # must be an int 
+                        r[c.at] += m.ceil(np.random.normal(0, noise_strength)) 
+                elif False: # MUST BE A SYM
+                    listOfSyms = getAllSyms(data, c) # get possible sym values
+                    if(rand.randint(0, 10) < 1): # some low probability that it changes to some class 
+                        r[c.at] = rand.choice(listOfSyms)
+    return data
+
+
+def getAllSyms(data, c):
+    unique_values = set()  # Set to store unique symbols
+
+    # Loop through rows and collect unique symbols for the column `c`
+    for r in data.rows:
+        value = r[c.at]
+        if value != "?":  # Exclude missing values
+            unique_values.add(value)
+
+    return list(unique_values)  # Convert to list if needed
+
+
+"""def getAllSyms(columns, c):
+    for q in columns: 
+        print(q)
+    return 0"""
+
+
+def fetchdoneandtodo(train_file,noise=0):
     d = DATA().adds(csv(train_file))
+    print(f"Data before: {d.rows[:5]}")
+    print(noise)
+    print(noise > 0)
+    print(isinstance(noise, (float)))
+    if noise > 0:
+        d=add_noise_to_data(d,noise)
+    print(f"Data After: {d.rows[:5]}")
     done = d.activeLearning()
     print(f"Number of done rows: {len(done)}")
-    compare_predictions_with_clustering(d, done, d.cols.y)
+    #compare_predictions_with_clustering(d, done, d.cols.y)
+    todo=fetch_todo(d.rows,done)
+    print(f"D cols: {d.cols.y}")
+    clusters2(d,done,todo)
 
-def compare_predictions_with_clustering(d, done_rows, goals):
-    somes = []
-    mid1s = stats.SOME(txt="mid-leaf")
-    somes.append(mid1s)
+def fetch_todo(allRows, done): return [row for row in allRows if row not in done]
 
-    for row in d.rows:
-        # Cluster based on the done set
-        clusters = d.cluster(done_rows)
-        for k in [1, 2, 3, 4, 5]:  # Different k-values for clustering
-            ks = stats.SOME(txt=f"k{k}")
-            somes.append(ks)
-            
-            leaf = clusters.leaf(d, row)
-            cluster_rows = leaf.data.rows
-            predictions = d.predict(row, cluster_rows, k=k)
-
-            # Update stats for comparison
-            mid1 = leaf.data.mid()
-            for at, pred in predictions.items():
-                actual_val = row[at]
-                sd = d.cols.all[at].div()
-                mid1s.add((actual_val - mid1[at]) / sd)
-                ks.add((actual_val - pred) / sd)
-
+def clusters2(d,done,todo):
+    somes  = []
+    mid1s  = stats.SOME(txt="mid-leaf")
+    #mid0s  = stats.SOME(txt="mid-all")
+    somes += [mid1s]
+    for k in [1,2,3,4,5]:
+        ks   = stats.SOME(txt=f"k{k}")
+        somes += [ks]
+        #for _ in range(len(d.rows)):
+        #for train,test in xval(d.rows):
+        #all = d.clone(done)
+        cluster = d.cluster(done)
+        #d1 = d.clone(done)
+        #mid0  = d1.mid()
+        
+        for want in todo:
+         
+          #for col in d1.cols.y: mid0s.add((mid0[col.at] - want[col.at])/col.div()) 
+          leaf = cluster.leaf(d, want)#leaf is closest cluster to that want row
+          rows = leaf.data.rows
+          got  = d.predict(want, rows, k=k) 
+          mid1  = leaf.data.mid()
+          for at,got1 in got.items():
+            sd = d.cols.all[at].div()
+            mid1s.add(abs(want[at] - mid1[at])/sd)
+            ks.add(  abs(want[at] - got1   )/sd)
     stats.report(somes)
+    print(f"accuracy: {accuracy(d)}") # print accuracy
+
+def accuracy(d):
+    correct = 0  # To count correctly labeled rows
+    total = 0    # To count all rows
+
+    # Assume the first column in `y` is the label column
+    label_index = d.cols.y[0].at
+
+    # Traverse nodes, focusing on leaf clusters
+    root_cluster = d.cluster()
+    for node, is_leaf in root_cluster.nodes():
+        if is_leaf:
+            # Extract labels in the target column for the leaf node
+            labels = [row[label_index] for row in node.data.rows if row[label_index] != "?"]
+
+            # Find the most common label and count correct matches
+            if labels:
+                most_common_label, count = Counter(labels).most_common(1)[0]
+                correct += count
+                total += len(labels)
+
+    # Calculate accuracy as the proportion of correctly labeled rows
+    accuracy = correct / total if total > 0 else 0
+    return accuracy
 
 if __name__ == "__main__":
-    fetchdoneandtodo(sys.argv[1])
-
-
-import sys
-# from ezr import *
-
-# def fetchdoneandtodo(train_file):
-#     d = DATA().adds(csv(train_file))
-#     done = d.activeLearning()
-#     print(f"Number of done rows: {len(done)}")
-
-#     # Step 1: Create initial clusters based on the `done` set
-#     clusters = d.cluster(done, sortp=True)  # Using `done` rows to initialize clusters
-
-#     # Step 2: Assign each row in `d.rows` to the nearest cluster
-#     for row in d.rows:
-#         # Find the closest cluster based on distance
-#         #closest_cluster = min(clusters.nodes(), key=lambda cluster: d.dist(row, cluster.mid))
-#         #closest_cluster = min((node.mid for node, leafp in clusters.nodes() if leafp),key=lambda mid: d.dist(row, mid))
-#         closest_cluster = min((node for node, leafp in clusters.nodes() if leafp), key=lambda node: d.dist(row, node.mid))
-#         closest_cluster.data.add(row)  # Add this row to the closest cluster
-
-#     # Step 3: Compare predictions or other metrics for accuracy
-#     compare_predictions(d, d.rows, done, d.cols.y)
-
-#     # # Print statistics for each cluster
-#     # for cluster_id, cluster in enumerate(clusters.nodes()):
-#     #     print(f"\nCluster {cluster_id + 1}")
-#     #     stats.report(cluster.data.somes)  # Show cluster statistics
-#     # Now report the statistics for each cluster
-#     for node, leafp in clusters.nodes():
-#         if leafp:  # Only if it's a leaf node
-#             if hasattr(node, 'data'):  # Check if node has data attribute
-#                 # Assuming 'somes' should be within the node's data or similar structure
-#                 stats.report(node.data.somes if hasattr(node.data, 'somes') else [])
-#             else:
-#                 print("Node has no data attribute")  # Debugging output
-
-# def calculate_accuracy(actual, predicted):
-#     # Add your accuracy calculation method here as needed
-#     return None
-
-# def compare_predictions(d, rows, labeledRows, goals):
-#     result = 0
-#     for row in rows:
-#         actual = {col.at: row[col.at] for col in goals}
-#         predicted = d.predict(row, labeledRows, cols=goals)
-#         print(f"\nRow: {row}")
-#         for col in goals:
-#             actual_value = actual[col.at]
-#             predicted_value = predicted[col.at]
-#             print(f"Goal: {col.txt}")
-#             print(f"  Actual: {actual_value}")
-#             print(f"  Predicted: {predicted_value}")
-#             if isinstance(actual_value, (int, float)) and abs(actual_value - predicted_value) < 0.001:
-#                 result += 1
-#             elif actual_value == predicted_value:
-#                 result += 1
-#     print(f"Number of Matched Labels: {result}")
-#     print(f"Total Number of labels: {len(d.rows) * len(d.cols.y)}")
-
-# if __name__ == "__main__":
-#     fetchdoneandtodo(sys.argv[1])  # Pass the .csv file to be trained
+    fetchdoneandtodo(sys.argv[1],float(sys.argv[2]))
