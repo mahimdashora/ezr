@@ -15,13 +15,17 @@ the fewest number of goal values?
 
 ### OPTIONS:   
 
-    -b --buffer int    chunk size, when streaming   = 100  
+    -b --buffer int    chunk size, when streaming   = 100
+    -B --branch bool   set branch method            = False  
+    -d --divide int    half with mean or median     = 0
+    -D --Dull   bool   if true, round to cohen's d  = False
     -L --Last   int    max number of labels         = 30  
     -c --cut    float  borderline best:rest         = 0.5  
     -C --Cohen  float  pragmatically small          = 0.35
     -e --eg     str    start up action              = mqs   
     -f --fars   int    number of times to look far  = 20   
-    -h --help          show help                    = False   
+    -h --help          show help                    = False  
+    -i --iter   int    length of done minus label   = 0 
     -k --k      int    low frequency Bayes hack     = 1   
     -l --label  int    initial number of labels     = 4   
     -m --m      int    low frequency Bayes hack     = 2   
@@ -46,9 +50,9 @@ and maximize fuel consumption.
 
      Clndrs   Volume  HpX  Model  origin  Lbs-  Acc+  Mpg+
      -------  ------  ---  -----  ------  ----  ----  ----
-      4       90      48   78     2       1985  21.5   40
+      4       90      48   78     2       1985  21.4   40
       4       98      79   76     1       2255  17.7   30
-      4       98      68   77     3       2045  18.5   30
+      4       98      68   77     3       2045  18.6   30
       4       79      67   74     2       2000  16     30
       ...
       4      151      85   78     1       2855  17.6   20
@@ -71,6 +75,7 @@ from dataclasses import dataclass, field, fields
 import datetime
 from math import exp,log,cos,sqrt,pi
 import re,sys,ast,math,random,inspect
+import traceback
 from time import time
 import stats
 R = random.random
@@ -95,14 +100,15 @@ class COL:
   n   : int = 0
   at  : int = 0
   txt : str = ""
-#
+
 # SYMs tracks  symbol counts  and tracks the `mode` (the most common frequent symbol).
 @dataclass
 class SYM(COL):
   has  : dict = DICT()
   mode : atom=None
   most : int=0
-#
+
+  def clone(self:SYM): return SYM(at=self.at,txt=self.txt)
 # NUMs tracks  `lo,hi` seen so far, as well the `mu` (mean) and `sd` (standard deviation),
 # using Welford's algorithm.
 @dataclass
@@ -113,6 +119,8 @@ class NUM(COL):
   lo : number =  1E32
   hi : number = -1E32
   goal : number = 1
+
+  def clone(self:NUM): return NUM(at=self.at,txt=self.txt)
 
   # A minus sign at end of a NUM's name says "this is a column to minimize"
   # (all other goals are to be maximizes).
@@ -261,25 +269,42 @@ def guess(self:DATA, fun:Callable=None) -> row:
   for col in self.cols.x: out[col.at] = fun(col)
   return out
 
+# @of("stochastic version of Guess. maybe too clever?")
+# def exploit(self:COL, other:COL, n=20):
+#   n       = (self.n + other.n + 2*the.k)
+#   pr1,pr2 = (self.n + the.k) / n, (other.n + the.k) / n
+#   key     = lambda x: 2*self.like(x,pr1) -  other.like(x,pr2)
+#   def trio():
+#     x=self.guess()
+#     return key(x),self.at,x
+#   return max([trio() for _ in range(n)], key=nth(0))
+#
 @of("Guess a value that is more like `self` than  `other`.")
-def exploit(self:COL, other:COL, n=20):
-  n       = (self.n + other.n + 2*the.k)
-  pr1,pr2 = (self.n + the.k) / n, (other.n + the.k) / n
-  key     = lambda x: 2*self.like(x,pr1) -  other.like(x,pr2)
-  def trio():
-    x=self.guess()
-    return key(x),self.at,x
-  return max([trio() for _ in range(n)], key=nth(0))
+def exploit(self:NUM, other:NUM):
+  a = self.like(self.mid())
+  b = other.like(self.mid())
+  c = (self.n*a - other.n*b)/(self.n + other.n) 
+  return c,self,self.mid()
+
+@of("Guess a value that is more like `self` than  `other`.")
+def exploit(self:SYM, other:SYM):
+  priora = self.n/(self.n + other.n)
+  priorb = other.n/(self.n + other.n)
+  a = self.like(self.mid(),  priora)
+  b = other.like(self.mid(), priorb)
+  c = a - b 
+  return c,self,self.mid(),
 
 @of("Guess a row more like `self` than `other`.")
 def exploit(self:DATA, other:DATA, top=1000,used=None):
   out = ["?" for _ in self.cols.all]
-  for _,at,x in sorted([coli.exploit(colj) for coli,colj in zip(self.cols.x, other.cols.x)],
+  for _,col,x in sorted([coli.exploit(colj) for coli,colj in zip(self.cols.x, other.cols.x)],
                        reverse=True,key=nth(0))[:top]:
-     out[at] = x
+     out[col.at] = x
+     # if used non-nil, keep stats on what is used
      if used != None:
-        used[at] = used.get(at,None) or NUM(at=at)
-        used[at].add(x)
+        used[col.at] = used.get(col.at,None) or col.clone()
+        used[col.at].add(x)
   return out
 
 @of("Guess a row in between the rows of `self` and `other`.")
@@ -320,7 +345,7 @@ def shuffle(self:DATA) -> DATA:
   random.shuffle(self.rows)
   return self
 
-@of("Sort rows by the Euclidean distance of the goals to heaven.")
+@of("Sort rows by Chebyshev distance.")
 def chebyshevs(self:DATA) -> DATA:
   self.rows = sorted(self.rows, key=lambda r: self.chebyshev(r))
   return self
@@ -407,12 +432,29 @@ def twoFar(self:DATA, rows:rows, sortp=False, samples:int=None) -> tuple[row,row
 
 @of("Divide rows by distance to two faraway points")
 def half(self:DATA, rows:rows, sortp=False) -> tuple[rows,rows,row,row,float]:
+  if the.divide == 0:
+    return self.half_mean(rows, True)
+  if the.divide == 1:
+    return self.half_median(rows, True)
+
+@of("Divide rows by distance to two faraway points")
+def half_mean(self:DATA, rows:rows, sortp=False) -> tuple[rows,rows,row,row,float]:
   left,right = self.twoFar(rows, sortp=sortp)
-  cut = self.dist(left,right)/2
+  C = self.dist(left,right)
   lefts,rights = [],[]
+  project = lambda row: (self.dist(row,left)**2 + C**2 - self.dist(row,right)**2)/(2*C + 1E-30)
   for row in rows: 
-    (lefts if self.dist(row,left) <= cut else rights).append(row)
+    (lefts if project(row) <= C/2 else rights).append(row)
   return self.dist(left,lefts[-1]),lefts, rights, left, right
+
+@of("Divide rows by distance to two faraway points")
+def half_median(self:DATA, rows:rows, sortp=False) -> tuple[rows,rows,row,row,float]:
+  mid = int(len(rows) // 2)
+  left,right = self.twoFar(rows, sortp=sortp)
+  C = self.dist(left,right)
+  project = lambda row: (self.dist(row,left)**2 + C**2 - self.dist(row,right)**2)/(2*C + 1E-30)
+  tmp = sorted(self.rows, key=project)
+  return self.dist(left,tmp[mid]), tmp[:mid], tmp[mid:], left, right
 
 @of("recursive divide rows using distance to two far points")
 def cluster(self:DATA, rows:rows=None,  sortp=False, stop=None, cut=None, fun=None, lvl=0):
@@ -423,6 +465,23 @@ def cluster(self:DATA, rows:rows=None,  sortp=False, stop=None, cut=None, fun=No
   if len(ls)>stop and len(ls)<len(rows): it.lefts  = self.cluster(ls, sortp, stop, cut1, le, lvl+1)
   if len(rs)>stop and len(rs)<len(rows): it.rights = self.cluster(rs, sortp, stop, cut1, gt, lvl+1)
   return it
+
+@of("Recursively bi-cluster `region`, recurse only down the best half.")
+def branch(self:DATA, region:rows=None, stop=None, used=[], evals=1):
+    region = region or self.rows
+    if not stop: random.shuffle(region)
+    stop = stop or the.Stop
+
+    if len(region) > stop:
+        distance, lefts, rights, left, right = self.half(region, True)
+        if left not in used:
+            used.append(left)
+        if right not in used:
+            used.append(right)
+
+        return self.branch(lefts, stop, used, evals + 1)
+    else:
+        return [r for r in self.rows if r not in used], used
 
 le = lambda x,y: x <= y
 gt = lambda x,y: x >  y
@@ -507,7 +566,7 @@ def like(self:SYM, x:any, prior:float) -> float:
   return (self.has.get(x,0) + the.m*prior) / (self.n + the.m)
 
 @of("How much a NUM likes a value `x`.")
-def like(self:NUM, x:number, _) -> float:
+def like(self:NUM, x:number, prior=None) -> float:
   v     = self.sd**2 + 1E-30
   nom   = exp(-1*(x - self.mu)**2/(2*v)) + 1E-30
   denom = (2*pi*v) **0.5
@@ -516,6 +575,7 @@ def like(self:NUM, x:number, _) -> float:
 # ### Active Learning
 @of("active learning")
 def activeLearning(self:DATA, score=lambda B,R: B-R, generate=None, faster=True ):
+  the.Last = 130
   def ranked(rows): return self.clone(rows).chebyshevs().rows
 
   def todos(todo):
@@ -531,6 +591,7 @@ def activeLearning(self:DATA, score=lambda B,R: B-R, generate=None, faster=True 
     best = self.clone(done[:cut])
     rest = self.clone(done[cut:])
     a,b  = todos(todo)
+    the.iter = len(done) - the.label
     if generate:
       return self.neighbors(generate(best,rest), a) + b 
     else:
@@ -538,18 +599,29 @@ def activeLearning(self:DATA, score=lambda B,R: B-R, generate=None, faster=True 
       return  sorted(a, key=key, reverse=True) + b
 
   def loop(todo:rows, done:rows) -> rows:
-    for k in range(the.Last - the.label):
-      if len(todo) < 3 : break
+    while len(todo) > 2 and len(done) < the.Last:
       top,*todo = guess(todo, done)
       done     += [top]
       done      = ranked(done)
     return done
+  
+  todo, done = self.rows[the.label:], ranked(self.rows[:the.label])
 
-  return loop(self.rows[the.label:], ranked(self.rows[:the.label]))
+  if the.branch == True:
+    todo, done = self.branch(used = [])
+    #print(len(done))
+    if the.Last==0: return done
+
+  return loop(todo, done)
 #
 # ## Utils
 
 # ### One-Liners
+
+def cdf(x,mu,sd):
+   def cdf1(z): return 1 - 0.5*2.718**(-0.717*z - 0.416*z*z)
+   z = (x - mu) / sd
+   return cdf1(z) if z >= 0 else 1 - cdf1(-z)
 
 # non parametric mid and div
 def medianSd(a: list[number]) -> tuple[number,number]:
@@ -583,6 +655,7 @@ def xval(lst:list, m:int=5, n:int=5, some:int=10**6) -> Generator[rows,rows]:
       for i,x in enumerate(lst):
         (test if i >= lo and i < hi else train).append(x)
       train = random.choices(train, k=min(len(train),some))
+      test = random.choices(test, k=min(len(test),some))
       yield train,test
 
 # ### Strings to Things
@@ -636,9 +709,12 @@ class egs:
   def all():
    for s in dir(egs):
      if s[0] != "_" and s != "all":
-        print(s)
+        print("\n---------------------------",s,"-------------------------------")
         random.seed(the.seed)
-        getattr(egs,s)()
+        try:
+            getattr(egs,s)()
+        except Exception:
+            print("FAIL!!!!!! ",s,Exception)
 
   def nums():
     r  = 256
@@ -736,26 +812,68 @@ class egs:
     print(d.chebyshev(d.clone([row for row in d.diversity(stop=10)]).chebyshevs().rows[0]))
     #print(len([d.clone([row for row in d.diversity(stop=stop)]).chebyshevs().rows[0] for _ in range(20)]))
 
-  def clusters2():
+  def clusters1():
     d = DATA().adds(csv(the.train))
-    somes  = []
+    mid = d.mid()
     mids  = stats.SOME(txt="mid")
-    somes += [mids]
+    somes  = [mids]
     for k in [1,2,3,5]:
       ks   = stats.SOME(txt=f"k{k}")
       somes += [ks]
-      for train,test in xval(d.rows):
-        cluster = d.cluster(train)
+      for train,test in xval(d.rows): # 5 -by 5 cross-val
+        d1 = d.clone(train)
         for want in test:
+          for col in d1.cols.y:
+            mids.add((mid[col.at] - want[col.at])/col.div())
+          rows = d1.neighbors(want, train)[:k]
+          got  = d.predict(want, rows, k=k) 
+          for at,got1 in got.items():
+            sd = d.cols.all[at].div()
+            ks.add(  (want[at] - got1   )/sd)
+    stats.report(somes)
+
+  def clusters2():
+    d = DATA().adds(csv(the.train))
+    somes  = []
+    mid1s  = stats.SOME(txt="mid-leaf")
+    #mid0s  = stats.SOME(txt="mid-all")
+    somes += [mid1s]
+    for k in [1,2,3,4,5]:
+      ks   = stats.SOME(txt=f"k{k}")
+      somes += [ks]
+      for train,test in xval(d.rows):
+        all = d.clone(train)
+        cluster = d.cluster(train)
+        d1 = d.clone(train)
+        mid0  = d1.mid()
+        for want in test:
+          #for col in d1.cols.y: mid0s.add((mid0[col.at] - want[col.at])/col.div())
           leaf = cluster.leaf(d, want)
           rows = leaf.data.rows
           got  = d.predict(want, rows, k=k) 
-          mid  = leaf.data.mid()
+          mid1  = leaf.data.mid()
           for at,got1 in got.items():
             sd = d.cols.all[at].div()
-            mids.add((want[at] - mid[at])/sd)
+            mid1s.add((want[at] - mid1[at])/sd)
             ks.add(  (want[at] - got1   )/sd)
     stats.report(somes)
+
+  def clusters12():
+    d = DATA().adds(csv(the.train))
+    for k in [1,2,4]:
+      for stop in [12,24,48]:
+        for some in [10000000000]:
+          for train,test in xval(d.rows,m=5,n=5,some=some):
+            all = d.clone(train)
+            cluster = d.cluster(train,stop=stop)
+            for want in test:
+              leaf = cluster.leaf(d, want)
+              mid  = leaf.data.mid()
+              rows = leaf.data.rows
+              got  = d.predict(want, rows, k=k) 
+              for at,got1 in got.items():
+                sd = d.cols.all[at].div()
+                print(k,some,stop,(want[at] - mid[at])/sd, (want[at] - got1)/sd,sep=",")
 
   def predicts(file=None):
     d = DATA().adds(csv(file or the.train)).shuffle()
@@ -770,26 +888,33 @@ class egs:
       if arg[-4:] == ".csv":
         the.train=arg
         random.seed(the.seed)
-        egs._mqs()
+        try:
+            egs._mqs()
+        except Exception:
+            traceback.print_stack()
 
   def _mqs():
     print(the.train,  flush=True, file=sys.stderr)
     print("\n"+the.train)
     repeats  = 20
     d        = DATA().adds(csv(the.train))
-    b4       = [d.chebyshev(row) for row in d.rows]
+    b4       = sorted([d.chebyshev(row) for row in d.rows])
     asIs,div = medianSd(b4)
-    rnd      = lambda z: z 
+    dull = div*the.Cohen
+    rnd      = lambda z: ((int(z/dull) * dull) if the.Dull else z)
+    least    = sorted([rnd(x) for x in b4])[0]
 
     print(f"asIs\t: {asIs:.3f}")
     print(f"div\t: {div:.3f}")
+    print(f"dull\t: {dull:.3f}")
+    print(f"least\t: {least:.3f}")
     print(f"rows\t: {len(d.rows)}")
     print(f"xcols\t: {len(d.cols.x)}")
     print(f"ycols\t: {len(d.cols.y)}\n")
 
     somes = [stats.SOME(b4,f"asIs,{len(d.rows)}")]
 
-    for n in [20,25,30,50,100]:
+    for n in [15,20,25,30,50,100]:
       the.Last = n
       rand     = []
       for _ in range(repeats):
@@ -811,8 +936,13 @@ class egs:
       used={}
       generate2 =lambda best,rest: best.exploit(rest,top=4,used=used)
       start = time()
-      mqs4 = [rnd(d.chebyshev(d.shuffle().activeLearning(generate=generate2)[0])) 
-              for _ in range(20)]
+      mqs4 = []
+      for _ in range(20):
+          tmp = d.shuffle().activeLearning(generate=generate2)
+          mqs4 += [rnd(d.chebyshev(tmp[0]))]
+      for col in sorted(used.values(), key=lambda col: -col.n):
+         print(f"\tfeature,{col.n},\t{col.mid()},\t{col.div():.3f},\t{col.txt}")
+
       print(f"mqs4.{n}: {(time() - start)/repeats:.2f} secs")
 
       somes +=   [stats.SOME(rand,    f"random,{n}"),
@@ -821,6 +951,248 @@ class egs:
                   stats.SOME(mqs1000, f"mqs1000,{n}")]
 
     stats.report(somes, 0.01)
+
+  def policies():
+    def normalized_exp(k, n, shift):
+        exp_values = [math.exp(0.25 * j) for j in range(n)]
+        min_exp, max_exp = min(exp_values), max(exp_values)
+        return (math.exp(0.25 * k) - min_exp) / (max_exp - min_exp) + shift
+    
+    def exploit(B, R):
+        return B
+    
+    def explore(B, R):
+        return (B + R) / (abs(B - R) + 10**-30)
+    
+    scoring_policies = [('exploit', lambda B, R,: exploit(B, R)),
+                        ('explore', lambda B, R: explore(B, R)),
+                        ('b2', lambda B, R: (B**2) / (R + 10**-30)),
+                        ('Random', lambda B, R: random.random()),
+                        ('SimAnneal', lambda B, R: ((exp(B) + 1) ** normalized_exp(the.iter, the.Last, 1) + (exp(R) + 1)) / (abs(exp(B) - exp(R)) + 10**-30)),
+                        ('ExpProgressive', lambda B, R: normalized_exp(the.iter, the.Last, 0) * exploit(B,R) + (1 - normalized_exp(the.iter, the.Last, 0)) * explore(B,R))]
+    
+    print(the.train,  flush=True, file=sys.stderr)
+    print("\n"+the.train)
+    repeats  = 20
+    d        = DATA().adds(csv(the.train))
+    b4       = [d.chebyshev(row) for row in d.rows]
+    asIs,div = medianSd(b4)
+    rnd      = lambda z: z 
+
+    print(f"asIs\t: {asIs:.3f}")
+    print(f"div\t: {div:.3f}")
+    print(f"rows\t: {len(d.rows)}")
+    print(f"xcols\t: {len(d.cols.x)}")
+    print(f"ycols\t: {len(d.cols.y)}\n")
+
+    somes = [stats.SOME(b4,f"asIs,{len(d.rows)}")]
+
+    for what,how in scoring_policies:
+      for the.Last in [20, 30, 40]:
+        start = time()
+        result = [rnd(d.chebyshev(d.shuffle().activeLearning(score=how)[0]))
+                for _ in range(repeats)]
+        print(f"{what}.{the.Last}: {(time() - start) /repeats:.2f} secs")
+        somes +=   [stats.SOME(result,    f"{what} ,{the.Last}")]
+
+    stats.report(somes, 0.01)
+
+  def eg():
+    def normalized_exp(k, n, shift):
+        exp_values = [math.exp(0.25 * j) for j in range(n)]
+        min_exp, max_exp = min(exp_values), max(exp_values)
+        return (math.exp(0.25 * k) - min_exp) / (max_exp - min_exp) + shift
+    
+    def exploit(B, R):
+        return B
+    
+    def explore(B, R):
+        return (B + R) / (abs(B - R) + 10**-30)
+    
+    scoring_policies = [('exploit', lambda B, R,: exploit(B, R)),
+                        ('explore', lambda B, R: explore(B, R)),
+                        ('expoit2', lambda B, R: (B**2) / (R + 10**-30)),
+                        ('Random', lambda B, R: random.random()),
+                        ('ExpProgressive', lambda B, R: normalized_exp(the.iter, the.Last, 0) * exploit(B,R) + (1 - normalized_exp(the.iter, the.Last, 0)) * explore(B,R))]
+    
+    print(the.train,  flush=True, file=sys.stderr)
+    print("\n"+the.train)
+    repeats  = 20
+    d        = DATA().adds(csv(the.train))
+    b4       = [d.chebyshev(row) for row in d.rows]
+    asIs,div = medianSd(b4)
+    rnd      = lambda z: z 
+
+    print(f"asIs\t: {asIs:.3f}")
+    print(f"div\t: {div:.3f}")
+    print(f"rows\t: {len(d.rows)}")
+    print(f"xcols\t: {len(d.cols.x)}")
+    print(f"ycols\t: {len(d.cols.y)}\n")
+
+    somes = [stats.SOME(b4,f"asIs,{len(d.rows)}")]
+
+    for what,how in scoring_policies:
+      for the.Last in [20, 30, 40]:
+        start = time()
+        result = [rnd(d.chebyshev(d.shuffle().activeLearning(score=how)[0]))
+                for _ in range(repeats)]
+        print(f"{what}.{the.Last}: {(time() - start) /repeats:.2f} secs")
+        somes +=   [stats.SOME(result,    f"{what} ,{the.Last}")]
+
+    stats.report(somes, 0.01)
+
+  def branch():
+    scoring_policies = [('exploit', lambda B, R,: B - R),
+                        ('explore', lambda B, R :  (exp(B) + exp(R))/ (1E-30 + abs(exp(B) - exp(R))))]
+    
+    print(the.train,  flush=True, file=sys.stderr)
+    print("\n"+the.train)
+    repeats  = 20
+    d        = DATA().adds(csv(the.train))
+    b4       = [d.chebyshev(row) for row in d.rows]
+    asIs,div = medianSd(b4)
+    rnd      = lambda z: z 
+
+    print(f"asIs\t: {asIs:.3f}")
+    print(f"div\t: {div:.3f}")
+    print(f"rows\t: {len(d.rows)}")
+    print(f"xcols\t: {len(d.cols.x)}")
+    print(f"ycols\t: {len(d.cols.y)}\n")
+
+    somes = [stats.SOME(b4,f"asIs,{len(d.rows)}")]
+
+    for what,how in scoring_policies:
+      for the.Last in [0,20, 30, 40]:
+        for the.branch in [False, True]:
+          start = time()
+          result = [] 
+          runs = 0
+          for _ in range(repeats):
+             tmp=d.shuffle().activeLearning(score=how)
+             runs += len(tmp)
+             result += [rnd(d.chebyshev(tmp[0]))]
+
+          pre=f"{what}/b={the.branch}" if the.Last >0 else "rrp"
+          tag = f"{pre},{int(runs/repeats)}"
+          print(tag, f": {(time() - start) /repeats:.2f} secs")
+          somes +=   [stats.SOME(result,    tag)]
+
+    stats.report(somes, 0.01)
+
+  def mean_vs_median():
+    scoring_policies = [('exploit', lambda B, R,: B),
+                        ('Random', lambda B, R: random.random())]
+    
+    print(the.train,  flush=True, file=sys.stderr)
+    print("\n"+the.train)
+    repeats  = 20
+    d        = DATA().adds(csv(the.train))
+    b4       = [d.chebyshev(row) for row in d.rows]
+    asIs,div = medianSd(b4)
+    rnd      = lambda z: z 
+
+    print(f"asIs\t: {asIs:.3f}")
+    print(f"div\t: {div:.3f}")
+    print(f"rows\t: {len(d.rows)}")
+    print(f"xcols\t: {len(d.cols.x)}")
+    print(f"ycols\t: {len(d.cols.y)}\n")
+
+    somes = [stats.SOME(b4,f"asIs,{len(d.rows)}")]
+
+    the.branch == True
+
+    for what,how in scoring_policies:
+      for the.divide in [0, 1]:
+        divide = 'mean' if the.divide == 0 else 'median'
+        for the.Last in [20, 30, 40]:
+          start = time()
+          result = [rnd(d.chebyshev(d.shuffle().activeLearning(score=how)[0]))
+                  for _ in range(repeats)]
+          print(f"{what}/branch={divide}.{the.Last}: {(time() - start) /repeats:.2f} secs")
+          somes +=   [stats.SOME(result,    f"{what}/branch={divide} ,{the.Last}")]
+
+    stats.report(somes, 0.01)
+
+# #--------- --------- --------- --------- --------- --------- --------- --------- --------
+# # ## Gaussian Process UCB (Sklearn)
+#
+# import numpy as np
+# from sklearn.preprocessing import StandardScaler, OneHotEncoder
+# from sklearn.compose import ColumnTransformer
+# from sklearn.pipeline import Pipeline
+# from sklearn.gaussian_process import GaussianProcessRegressor
+# from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+#
+# import warnings
+# from sklearn.exceptions import ConvergenceWarning
+# warnings.filterwarnings("ignore", category=ConvergenceWarning)
+# warnings.filterwarnings("ignore", message="Predicted variances smaller than 0. Setting those variances to 0.")
+#
+# def UCB_GPM(d, todo, done):
+#     kernel = C(1.0, (1e-8, 1e8)) * RBF(1.0, (1e-8, 1e8))
+#     gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
+#
+#     num_indexes = [col.at for col in d.cols.x if type(col) == NUM]
+#     sym_indexes = [col.at for col in d.cols.x if type(col) == SYM]
+#
+#     num_transformer = StandardScaler()
+#     cat_transformer = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+#
+#     preprocessor = ColumnTransformer(
+#         transformers=[
+#             ('num', num_transformer, num_indexes),
+#             ('cat', cat_transformer, sym_indexes)])
+#
+#     pipeline = Pipeline(steps=[('preprocessor', preprocessor)])
+#
+#     if sym_indexes:
+#         cat_data = np.array([[str(row[idx]) for idx in sym_indexes] for row in done], dtype=object)
+#         cat_transformer.fit(cat_data)
+#     
+#     def grid_search_optimizer(obj_func, initial_theta, bounds):
+#         best_theta = np.copy(initial_theta).flatten()
+#         best_value, _ = obj_func(best_theta)
+#         
+#         for i in range(10):
+#             candidate_theta = initial_theta + np.random.uniform(-0.1, 0.1, size=initial_theta.shape)
+#             candidate_theta = np.clip(candidate_theta, bounds[:, 0], bounds[:, 1])
+#             candidate_theta = candidate_theta.flatten()
+#             
+#             candidate_value, _ = obj_func(candidate_theta)
+#             
+#             if candidate_value < best_value:
+#                 best_theta = np.copy(candidate_theta)
+#                 best_value = candidate_value
+#         
+#         return best_theta, best_value
+#     
+#     gp.optimizer = grid_search_optimizer
+#
+#     def update_gp_model(done_set):
+#         X_done = np.array([x for x in done_set], dtype=object)
+#         y_done = np.array([-d.chebyshev(x) for x in done_set])
+#         X_done_transformed = pipeline.fit_transform(X_done)
+#         gp.fit(X_done_transformed, y_done)
+#     
+#     def ucb(x, kappa=2.576):
+#         x = np.array(x).reshape(1, -1).astype(object)
+#         x_transformed = pipeline.transform(x)
+#         mean, std = gp.predict(x_transformed, return_std=True)
+#         return mean + kappa * std
+#     
+#     while todo and len(done) < the.Last:
+#         update_gp_model(done)
+#         random.shuffle(todo)
+#         todo_subset = todo[:the.buffer]
+#
+#         ucb_values = [ucb(row) for row in todo_subset]
+#         best_idx = np.argmax(ucb_values)
+#         best_candidate = todo.pop(best_idx)
+#          
+#         done.append(best_candidate)
+#     
+#     return done
+#
 #
 # ## Main
 the = SETTINGS(__doc__)
