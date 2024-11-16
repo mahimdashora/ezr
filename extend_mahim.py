@@ -56,6 +56,10 @@ def fetchdoneandtodo(train_file,noise=0):
     #print(f"Number of done rows: {len(done)}")
     #compare_predictions_with_clustering(d, done, d.cols.y)
     todo=fetch_todo(d.rows,done)
+    done_after_ucb = UCB_GPM(d, todo, done)
+    print(f"Len of done after ucb {done_after_ucb}")
+    # Step 2: Filter out processed items from 'todo'
+    todo=fetch_todo(d.rows,done_after_ucb)
     #print(f"D cols: {d.cols.y}")
     clusters2(d,done,todo)
 
