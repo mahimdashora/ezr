@@ -1194,6 +1194,94 @@ def UCB_GPM(d, todo, done):
     return done
 
 
+
+#Probability of Improvement (PI)#
+import numpy as np
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
+import warnings
+from sklearn.exceptions import ConvergenceWarning
+warnings.filterwarnings("ignore", category=ConvergenceWarning)
+
+def PI_GPM(d, todo, done, xi=0.01):
+    kernel = C(1.0, (1e-8, 1e8)) * RBF(1.0, (1e-8, 1e8))
+    gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
+
+    num_indexes = [col.at for col in d.cols.x if type(col) == NUM]
+    sym_indexes = [col.at for col in d.cols.x if type(col) == SYM]
+
+    num_transformer = StandardScaler()
+    cat_transformer = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', num_transformer, num_indexes),
+            ('cat', cat_transformer, sym_indexes)])
+
+    pipeline = Pipeline(steps=[('preprocessor', preprocessor)])
+
+    if sym_indexes:
+        cat_data = np.array([[str(row[idx]) for idx in sym_indexes] for row in done], dtype=object)
+        cat_transformer.fit(cat_data)
+    
+    def grid_search_optimizer(obj_func, initial_theta, bounds):
+        best_theta = np.copy(initial_theta).flatten()
+        best_value, _ = obj_func(best_theta)
+        
+        for i in range(10):
+            candidate_theta = initial_theta + np.random.uniform(-0.1, 0.1, size=initial_theta.shape)
+            candidate_theta = np.clip(candidate_theta, bounds[:, 0], bounds[:, 1])
+            candidate_theta = candidate_theta.flatten()
+            
+            candidate_value, _ = obj_func(candidate_theta)
+            
+            if candidate_value < best_value:
+                best_theta = np.copy(candidate_theta)
+                best_value = candidate_value
+        
+        return best_theta, best_value
+    
+    gp.optimizer = grid_search_optimizer
+
+    def update_gp_model(done_set):
+        X_done = np.array([x for x in done_set], dtype=object)
+        y_done = np.array([-d.chebyshev(x) for x in done_set])
+        X_done_transformed = pipeline.fit_transform(X_done)
+        gp.fit(X_done_transformed, y_done)
+    
+    def probability_of_improvement(x, best_so_far, xi=xi):
+        x = np.array(x).reshape(1, -1).astype(object)
+        x_transformed = pipeline.transform(x)
+        mean, std = gp.predict(x_transformed, return_std=True)
+        z = (mean - best_so_far - xi) / (std + 1e-9)      #(std + 1e-9)
+        from scipy.stats import norm
+        return norm.cdf(z)
+    
+    while todo and len(done) < the.Last:
+        update_gp_model(done)
+        random.shuffle(todo)
+        todo_subset = todo[:the.buffer]
+
+        # Best-so-far value in the done set
+        X_done_transformed = pipeline.transform(np.array([x for x in done], dtype=object))
+        y_done = gp.predict(X_done_transformed)
+        best_so_far = max(y_done)
+
+        # Calculate PI values
+        pi_values = [probability_of_improvement(row, best_so_far) for row in todo_subset]
+        best_idx = np.argmax(pi_values)
+        best_candidate = todo.pop(best_idx)
+         
+        done.append(best_candidate)
+    
+    return done
+
+
+
+
 # ## Main
 the = SETTINGS(__doc__)
 if __name__ == "__main__" and len(sys.argv)> 1:
